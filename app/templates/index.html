@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0"><i class="bi bi-chat-text me-2"></i>文本转语音</h2>
+            </div>
+            <div class="card-body">
+                <form id="ttsForm">
+                    <div class="mb-3">
+                        <label for="text" class="form-label">输入文本</label>
+                        <textarea class="form-control" id="text" name="text" rows="5"
+                                  placeholder="请输入要转换为语音的文本..." required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="voice" class="form-label">选择语言</label>
+                            <select class="form-select" id="voice" name="voice">
+                                <optgroup label="中文">
+                                    {% for voice in voices.zh %}
+                                    <option value="{{ voice.ShortName }}"
+                                            {% if voice.ShortName == 'zh-CN' %}selected{% endif %}>
+                                        {{ voice.DisplayName }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="英文">
+                                    {% for voice in voices.en %}
+                                    <option value="{{ voice.ShortName }}">
+                                        {{ voice.DisplayName }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="其他语言">
+                                    {% for voice in voices.other %}
+                                    <option value="{{ voice.ShortName }}">
+                                        {{ voice.DisplayName }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="rate" class="form-label">语速调整 (不支持)</label>
+                            <div class="input-group">
+                                <input type="range" class="form-range" id="rateSlider" min="-50" max="50" value="0" disabled>
+                                <input type="text" class="form-control" id="rate" name="rate" value="+0%" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="volume" class="form-label">音量调整 (不支持)</label>
+                            <div class="input-group">
+                                <input type="range" class="form-range" id="volumeSlider" min="-50" max="50" value="0" disabled>
+                                <input type="text" class="form-control" id="volume" name="volume" value="+0%" readonly>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="pitch" class="form-label">音调调整 (不支持)</label>
+                            <div class="input-group">
+                                <input type="range" class="form-range" id="pitchSlider" min="-50" max="50" value="0" disabled>
+                                <input type="text" class="form-control" id="pitch" name="pitch" value="+0Hz" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>提示：</strong> gTTS不支持调整语速、音量和音调，这些选项将被忽略。
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-soundwave me-2"></i>生成语音
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="resultCard" class="card mt-4 shadow d-none">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0"><i class="bi bi-file-earmark-music me-2"></i>生成结果</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">预览</label>
+                    <audio id="audioPlayer" controls class="w-100"></audio>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button id="downloadBtn" class="btn btn-primary">
+                        <i class="bi bi-download me-2"></i>下载音频
+                    </button>
+                    <button id="copyApiBtn" class="btn btn-secondary">
+                        <i class="bi bi-code-slash me-2"></i>复制API调用
+                    </button>
+                </div>
+
+                <div id="apiCallExample" class="mt-3 d-none">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">
+                            API调用示例
+                        </div>
+                        <div class="card-body">
+                            <pre id="apiCode" class="bg-light p-3 rounded"><code></code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单提交处理
+    const ttsForm = document.getElementById('ttsForm');
+    const resultCard = document.getElementById('resultCard');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const copyApiBtn = document.getElementById('copyApiBtn');
+    const apiCallExample = document.getElementById('apiCallExample');
+    const apiCode = document.getElementById('apiCode').querySelector('code');
+
+    ttsForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // 显示加载状态
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>正在生成...';
+
+        // 获取表单数据
+        const formData = new FormData(this);
+
+        // 发送请求
+        fetch('/generate', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 显示结果卡片
+                resultCard.classList.remove('d-none');
+
+                // 设置音频播放器
+                audioPlayer.src = data.file_path;
+
+                // 设置下载按钮
+                downloadBtn.onclick = function() {
+                    const link = document.createElement('a');
+                    link.href = data.file_path;
+                    link.download = `tts_${Date.now()}.mp3`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+
+                // 设置API调用示例
+                const apiExample = {
+                    url: `${window.location.origin}/api/v1/tts`,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: {
+                        text: formData.get('text'),
+                        voice: formData.get('voice')
+                    }
+                };
+
+                apiCode.textContent = JSON.stringify(apiExample, null, 2);
+
+                copyApiBtn.onclick = function() {
+                    navigator.clipboard.writeText(apiCode.textContent);
+                    copyApiBtn.textContent = '已复制!';
+                    setTimeout(() => {
+                        copyApiBtn.innerHTML = '<i class="bi bi-code-slash me-2"></i>复制API调用';
+                    }, 2000);
+                    apiCallExample.classList.remove('d-none');
+                };
+
+                // 滚动到结果区域
+                resultCard.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                alert(`生成失败: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('请求失败，请稍后重试');
+        })
+        .finally(() => {
+            // 恢复按钮状态
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        });
+    });
+
+    // 显示API调用示例
+    copyApiBtn.addEventListener('click', function() {
+        apiCallExample.classList.toggle('d-none');
+    });
+});
+</script>
+{% endblock %}

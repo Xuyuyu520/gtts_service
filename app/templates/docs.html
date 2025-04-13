@@ -1,0 +1,60 @@
+<div class="card mb-4">
+    <div class="card-header">
+        <h4 class="mb-0">生成语音</h4>
+    </div>
+    <div class="card-body">
+        <h5>请求</h5>
+        <p><code>POST /tts</code></p>
+
+        <h5>请求参数</h5>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>text</td>
+                    <td>string</td>
+                    <td>是</td>
+                    <td>要转换的文本内容，最大5000个字符</td>
+                </tr>
+                <tr>
+                    <td>voice</td>
+                    <td>string</td>
+                    <td>否</td>
+                    <td>语言代码，如zh-CN、en等，默认为zh-CN</td>
+                </tr>
+                <tr>
+                    <td>rate</td>
+                    <td>string</td>
+                    <td>否</td>
+                    <td>语速调整（gTTS不支持，参数将被忽略）</td>
+                </tr>
+                <tr>
+                    <td>volume</td>
+                    <td>string</td>
+                    <td>否</td>
+                    <td>音量调整（gTTS不支持，参数将被忽略）</td>
+                </tr>
+                <tr>
+                    <td>pitch</td>
+                    <td>string</td>
+                    <td>否</td>
+                    <td>音调调整（gTTS不支持，参数将被忽略）</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>注意：</strong> gTTS不支持调整语速、音量和音调，这些参数将被忽略。
+        </div>
+
+        <!-- 其余内容保持不变 -->
+    </div>
+</div>
