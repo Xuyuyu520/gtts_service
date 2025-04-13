@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  gtts-service:
+    build: .
+    container_name: gtts-service
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logs:/app/logs
+      - ./app/static/audio:/app/app/static/audio
+    environment:
+      - SECRET_KEY=your-secure-secret-key-here
+      - DEBUG=False
+      - AUDIO_RETENTION_HOURS=24
